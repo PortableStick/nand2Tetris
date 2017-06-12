@@ -17,4 +17,11 @@ CHIP PC {
 
     PARTS:
     // Put your code here:
+    Mux16(a=in, b=incOut, sel=loadOrInc, out=firstMuxOut);
+    Mux16(a=firstMuxOut, b=false, sel=reset, out=secondMuxOut);
+    Inc16(in=registerOut, out=incOut);
+    Nand(a=load, b=loadSet, out=loadOrInc);
+    Register(in=secondMuxOut, out=out, out=registerOut, load=loadSet);
+    Or(a=load, b=reset, out=firstOr);
+    Or(a=firstOr, b=inc, out=loadSet);
 }
