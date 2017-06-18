@@ -6,23 +6,23 @@
 /**
  * The Hack CPU (Central Processing unit), consisting of an ALU,
  * two registers named A and D, and a program counter named PC.
- * The CPU is designed to fetch and execute instructions written in 
+ * The CPU is designed to fetch and execute instructions written in
  * the Hack machine language. In particular, functions as follows:
- * Executes the inputted instruction according to the Hack machine 
+ * Executes the inputted instruction according to the Hack machine
  * language specification. The D and A in the language specification
  * refer to CPU-resident registers, while M refers to the external
- * memory location addressed by A, i.e. to Memory[A]. The inM input 
- * holds the value of this location. If the current instruction needs 
- * to write a value to M, the value is placed in outM, the address 
- * of the target location is placed in the addressM output, and the 
- * writeM control bit is asserted. (When writeM==0, any value may 
- * appear in outM). The outM and writeM outputs are combinational: 
- * they are affected instantaneously by the execution of the current 
- * instruction. The addressM and pc outputs are clocked: although they 
- * are affected by the execution of the current instruction, they commit 
- * to their new values only in the next time step. If reset==1 then the 
- * CPU jumps to address 0 (i.e. pc is set to 0 in next time step) rather 
- * than to the address resulting from executing the current instruction. 
+ * memory location addressed by A, i.e. to Memory[A]. The inM input
+ * holds the value of this location. If the current instruction needs
+ * to write a value to M, the value is placed in outM, the address
+ * of the target location is placed in the addressM output, and the
+ * writeM control bit is asserted. (When writeM==0, any value may
+ * appear in outM). The outM and writeM outputs are combinational:
+ * they are affected instantaneously by the execution of the current
+ * instruction. The addressM and pc outputs are clocked: although they
+ * are affected by the execution of the current instruction, they commit
+ * to their new values only in the next time step. If reset==1 then the
+ * CPU jumps to address 0 (i.e. pc is set to 0 in next time step) rather
+ * than to the address resulting from executing the current instruction.
  */
 
 CHIP CPU {
@@ -34,10 +34,51 @@ CHIP CPU {
                          // the current program (reset==0).
 
     OUT outM[16],        // M value output
-        writeM,          // Write to M? 
+        writeM,          // Write to M?
         addressM[15],    // Address in data memory (of M)
         pc[15];          // address of next instruction
 
     PARTS:
     // Put your code here:
+    //A- or C-instruction?
+    And(a=instruction[15], b=true, out=isC);
+    Or(a=loadFromALUorInstruction, b=isA, out=loadA);
+    Not(in=isC, out=isA);
+    Or(a=isA, b=assertABit, out=AorMem);
+    //address
+    And(a=instruction[5], b=true, out=loadFromALU);
+    And(a=loadFromALU, b=isC, out=loadFromALUorInstruction);
+    Mux16(b=ALUOut, a=instruction, out=addressOut, sel=loadFromALUorInstruction);
+
+    //memory
+    Mux16(a=inM, b=registerAOut, out=memoryOut, sel=AorMem);
+    //reg A
+    ARegister(in=addressOut, out=registerAOut, out[0..14]=addressM, load=loadA);
+    //reg D
+    DRegister(in=ALUOut, out=registerDOut, load=loadD);
+    //program counter
+    PC(in=registerAOut, out[0..14]=pc, reset=reset, inc=true, load=JMPOnlyIfC);
+    //ALU
+    ALU(y=memoryOut, x=registerDOut, zx=assertZx, nx=assertNx, zy=instruction[9], ny=instruction[8], f=instruction[7], no=instruction[6], zr=ALUZero, ng=ALUNeg, out=ALUOut, out=outM);
+    Or(a=ALUZero, b=ALUNeg, out=ALUNotPos);
+    Not(in=ALUNotPos, out=ALUPos);
+    //mem assert
+    And(a=instruction[3], b=isC, out=writeM);
+
+    And(a=isC, b=instruction[4], out=loadD);
+
+    //jump logic
+    And(a=instruction[2], b=ALUNeg, out=JMPNeg);
+    And(a=instruction[1], b=ALUZero, out=JMPZero);
+    And(a=instruction[0], b=ALUPos, out=JMPPos);
+    Or(a=JMPNeg, b=JMPZero, out=firstOut);
+    Or(a=JMPPos, b=firstOut, out=JMPLoad);
+    Not(in=JMPLoad, out=INCAssert);
+    And(a=isC, b=JMPLoad, out=JMPOnlyIfC);
+
+    //debug
+    And(a=isC, b=instruction[11], out=assertZx);
+    And(a=isC, b=instruction[10], out=assertNx);
+    Not(in=instruction[12], out=assertABit);
+
 }
