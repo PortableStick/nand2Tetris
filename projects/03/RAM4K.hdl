@@ -1,0 +1,44 @@
+// This file is part of www.nand2tetris.org
+// and the book "The Elements of Computing Systems"
+// by Nisan and Schocken, MIT Press.
+// File name: projects/03/b/RAM4K.hdl
+
+/**
+ * Memory of 4K registers, each 16 bit-wide. Out holds the value
+ * stored at the memory location specified by address. If load==1, then
+ * the in value is loaded into the memory location specified by address
+ * (the loaded value will be emitted to out from the next time step onward).
+ */
+
+CHIP RAM4K {
+    IN in[16], load, address[12];
+    OUT out[16];
+
+    PARTS:
+    // Put your code here:
+    DMux(in=load, sel=address[2], a=loadOut1, b=loadOut2);
+    DMux(in=loadOut1, sel=address[1], a=loadOut3, b=loadOut4);
+    DMux(in=loadOut2, sel=address[1], a=loadOut5, b=loadOut6);
+    DMux(in=loadOut3, sel=address[0], a=loadIn1, b=loadIn2);
+    DMux(in=loadOut4, sel=address[0], a=loadIn3, b=loadIn4);
+    DMux(in=loadOut5, sel=address[0], a=loadIn5, b=loadIn6);
+    DMux(in=loadOut6, sel=address[0], a=loadIn7, b=loadIn8);
+
+    //Handle output
+    Mux16(a=fromRegister1, b=fromRegister2, sel=address[0], out=output1);
+    Mux16(a=fromRegister3, b=fromRegister4, sel=address[0], out=output2);
+    Mux16(a=fromRegister5, b=fromRegister6, sel=address[0], out=output3);
+    Mux16(a=fromRegister7, b=fromRegister8, sel=address[0], out=output4);
+    Mux16(a=output1, b=output2, sel=address[1], out=output5);
+    Mux16(a=output3, b=output4, sel=address[1], out=output6);
+    Mux16(a=output5, b=output6, sel=address[2], out=out);
+
+    RAM512(in=in, load=loadIn1, address=address[3..11], out=fromRegister1);
+    RAM512(in=in, load=loadIn2, address=address[3..11], out=fromRegister2);
+    RAM512(in=in, load=loadIn3, address=address[3..11], out=fromRegister3);
+    RAM512(in=in, load=loadIn4, address=address[3..11], out=fromRegister4);
+    RAM512(in=in, load=loadIn5, address=address[3..11], out=fromRegister5);
+    RAM512(in=in, load=loadIn6, address=address[3..11], out=fromRegister6);
+    RAM512(in=in, load=loadIn7, address=address[3..11], out=fromRegister7);
+    RAM512(in=in, load=loadIn8, address=address[3..11], out=fromRegister8);
+}
